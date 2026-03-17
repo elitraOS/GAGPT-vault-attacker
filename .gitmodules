@@ -1,0 +1,3 @@
+[submodule "elitra-core"]
+	path = elitra-core
+	url = git@duvbell:elitraOS/elitra-core.git
