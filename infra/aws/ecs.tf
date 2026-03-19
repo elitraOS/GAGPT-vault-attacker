@@ -1,4 +1,3 @@
-# ECR Repository
 resource "aws_ecr_repository" "main" {
   name                 = local.name_prefix
   image_tag_mutability = "MUTABLE"
@@ -33,7 +32,6 @@ resource "aws_ecr_lifecycle_policy" "main" {
   })
 }
 
-# ECS Cluster
 resource "aws_ecs_cluster" "main" {
   name = local.name_prefix
 
@@ -59,7 +57,6 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
   }
 }
 
-# CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "main" {
   name              = "/ecs/${local.name_prefix}"
   retention_in_days = 30
@@ -69,7 +66,6 @@ resource "aws_cloudwatch_log_group" "main" {
   }
 }
 
-# ECS Task Definition
 resource "aws_ecs_task_definition" "main" {
   family                   = local.name_prefix
   network_mode             = "awsvpc"
@@ -139,7 +135,6 @@ resource "aws_ecs_task_definition" "main" {
   }
 }
 
-# Application Load Balancer
 resource "aws_lb" "main" {
   name               = local.name_prefix
   internal           = false
@@ -154,7 +149,6 @@ resource "aws_lb" "main" {
   }
 }
 
-# Target Groups
 resource "aws_lb_target_group" "frontend" {
   name        = "${local.name_prefix}-fe"
   port        = var.frontend_port
@@ -201,7 +195,6 @@ resource "aws_lb_target_group" "backend" {
   }
 }
 
-# ALB Listeners
 resource "aws_lb_listener" "frontend" {
   load_balancer_arn = aws_lb.main.arn
   port              = 80
@@ -224,7 +217,6 @@ resource "aws_lb_listener" "backend" {
   }
 }
 
-# ECS Service
 resource "aws_ecs_service" "main" {
   name            = local.name_prefix
   cluster         = aws_ecs_cluster.main.id

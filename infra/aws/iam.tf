@@ -1,7 +1,6 @@
 data "aws_caller_identity" "current" {}
 
-# ECS Task Execution Role
-data "aws_iam_policy_document" "ecs_task_execution_assume" {
+data "aws_iam_policy_document" "ecs_task_assume" {
   statement {
     actions = ["sts:AssumeRole"]
     principals {
@@ -11,9 +10,10 @@ data "aws_iam_policy_document" "ecs_task_execution_assume" {
   }
 }
 
+# ECS Task Execution Role
 resource "aws_iam_role" "ecs_task_execution" {
   name               = "${local.name_prefix}-ecs-task-execution"
-  assume_role_policy = data.aws_iam_policy_document.ecs_task_execution_assume.json
+  assume_role_policy = data.aws_iam_policy_document.ecs_task_assume.json
 
   tags = {
     Name = "${local.name_prefix}-ecs-task-execution"
@@ -31,16 +31,6 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_ssm" {
 }
 
 # ECS Task Role (application permissions)
-data "aws_iam_policy_document" "ecs_task_assume" {
-  statement {
-    actions = ["sts:AssumeRole"]
-    principals {
-      type        = "Service"
-      identifiers = ["ecs-tasks.amazonaws.com"]
-    }
-  }
-}
-
 resource "aws_iam_role" "ecs_task" {
   name               = "${local.name_prefix}-ecs-task"
   assume_role_policy = data.aws_iam_policy_document.ecs_task_assume.json
@@ -72,11 +62,6 @@ resource "aws_iam_role_policy" "ecs_task_minimal" {
 }
 
 # GitHub OIDC Provider + Role for CI/CD
-data "aws_iam_openid_connect_provider" "github" {
-  count = 0 # Set to 1 if the OIDC provider does not yet exist in your account
-  url   = "https://token.actions.githubusercontent.com"
-}
-
 resource "aws_iam_openid_connect_provider" "github" {
   url             = "https://token.actions.githubusercontent.com"
   client_id_list  = ["sts.amazonaws.com"]

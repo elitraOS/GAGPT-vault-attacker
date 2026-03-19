@@ -2,7 +2,6 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
-# VPC
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
@@ -13,7 +12,6 @@ resource "aws_vpc" "main" {
   }
 }
 
-# Internet Gateway
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
@@ -22,7 +20,6 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
-# Public Subnets
 resource "aws_subnet" "public" {
   count = 2
 
@@ -37,7 +34,6 @@ resource "aws_subnet" "public" {
   }
 }
 
-# Private Subnets
 resource "aws_subnet" "private" {
   count = 2
 
@@ -51,7 +47,6 @@ resource "aws_subnet" "private" {
   }
 }
 
-# Public Route Table
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
@@ -72,7 +67,6 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# NAT Gateway for private subnets
 resource "aws_eip" "nat" {
   domain = "vpc"
 
@@ -92,7 +86,6 @@ resource "aws_nat_gateway" "main" {
   depends_on = [aws_internet_gateway.main]
 }
 
-# Private Route Table
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
@@ -113,7 +106,6 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
-# Security Group — ALB
 resource "aws_security_group" "alb" {
   name        = "${local.name_prefix}-alb-sg"
   description = "Security group for the Application Load Balancer"
@@ -147,7 +139,6 @@ resource "aws_security_group" "alb" {
   }
 }
 
-# Security Group — Backend ECS tasks
 resource "aws_security_group" "backend_ecs" {
   name        = "${local.name_prefix}-backend-ecs-sg"
   description = "Security group for backend ECS tasks"
@@ -173,7 +164,6 @@ resource "aws_security_group" "backend_ecs" {
   }
 }
 
-# Security Group — Frontend ECS tasks
 resource "aws_security_group" "frontend_ecs" {
   name        = "${local.name_prefix}-frontend-ecs-sg"
   description = "Security group for frontend ECS tasks"
