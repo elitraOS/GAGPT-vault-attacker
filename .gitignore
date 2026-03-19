@@ -1,0 +1,17 @@
+node_modules/
+contracts/artifacts/
+contracts/cache/
+contracts/typechain-types/
+frontend/dist/
+frontend/.next/
+frontend/out/
+backend/dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+infra/aws/.terraform/
+infra/aws/*.tfstate
+infra/aws/*.tfstate.backup
+infra/aws/.terraform.lock.hcl
