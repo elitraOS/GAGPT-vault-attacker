@@ -9,6 +9,8 @@ pnpm-debug.log*
 # Build outputs
 backend/dist/
 frontend/dist/
+frontend/.next/
+frontend/out/
 frontend/.vite/
 
 # Hardhat / Solidity build artifacts
@@ -22,6 +24,8 @@ contracts/typechain-types/
 .env.production
 .env.local
 .env.*.local
+.env.*
+!.env.example
 *.env
 
 # Coverage / test output
@@ -48,3 +52,9 @@ Thumbs.db
 # Foundry build outputs (if applicable)
 out/
 cache/
+
+# Terraform
+infra/aws/.terraform/
+infra/aws/*.tfstate
+infra/aws/*.tfstate.backup
+infra/aws/.terraform.lock.hcl

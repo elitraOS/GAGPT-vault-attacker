@@ -1,0 +1,5 @@
+aws_region      = "us-east-1"
+app_name        = "gagpt-vault-attacker"
+environment     = "production"
+backend_image   = "<aws_account_id>.dkr.ecr.<region>.amazonaws.com/<repo>:backend-latest"
+frontend_image  = "<aws_account_id>.dkr.ecr.<region>.amazonaws.com/<repo>:frontend-latest"
