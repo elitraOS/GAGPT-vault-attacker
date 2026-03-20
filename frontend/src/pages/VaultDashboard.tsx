@@ -5,6 +5,7 @@ import { StatusBar } from '../components/StatusBar';
 import { MetricCard } from '../components/MetricCard';
 import { FeeTable } from '../components/FeeTable';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
+import VaultInfo from '../components/VaultInfo';
 
 const REFRESH_INTERVAL = 30;
 
@@ -32,6 +33,7 @@ export function VaultDashboard() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">ElitraVault Dashboard</h1>
+          <VaultInfo />
           <span className="text-sm text-gray-400">
             {countdown === 0 ? 'Refreshing...' : `Next refresh in ${countdown}s`}
           </span>
