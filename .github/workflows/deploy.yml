@@ -10,12 +10,13 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
-  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-  ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPOSITORY }}
-  ECS_CLUSTER: ${{ secrets.AWS_ECS_CLUSTER }}
-  ECS_SERVICE: ${{ secrets.AWS_ECS_SERVICE }}
-  ECS_TASK_FAMILY: ${{ secrets.AWS_ECS_TASK_FAMILY }}
+  AWS_REGION: "us-east-1"
+  AWS_ACCOUNT_ID: "692859939200"
+  ECR_REPOSITORY: "gagpt-vault-attacker-production"
+  ECS_CLUSTER: "gagpt-vault-attacker-production"
+  ECS_SERVICE: "gagpt-vault-attacker-production"
+  ECS_TASK_FAMILY: "gagpt-vault-attacker-production"
+  DEPLOYMENT_URL: "http://gagpt-vault-attacker-production-683528344.us-east-1.elb.amazonaws.com"
 
 jobs:
   test:
@@ -84,8 +85,10 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           BACKEND_IMAGE="$ECR_REGISTRY/$ECR_REPOSITORY:backend-$IMAGE_TAG"
-          docker build -f docker/backend.Dockerfile -t "$BACKEND_IMAGE" ./backend
+          docker build -f docker/backend.Dockerfile -t "$BACKEND_IMAGE" .
+          docker tag "$BACKEND_IMAGE" "$ECR_REGISTRY/$ECR_REPOSITORY:backend-latest"
           docker push "$BACKEND_IMAGE"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:backend-latest"
           echo "image=$BACKEND_IMAGE" >> "$GITHUB_OUTPUT"
 
       - name: Build, tag, and push frontend image
@@ -96,7 +99,9 @@ jobs:
         run: |
           FRONTEND_IMAGE="$ECR_REGISTRY/$ECR_REPOSITORY:frontend-$IMAGE_TAG"
           docker build -f docker/frontend.Dockerfile -t "$FRONTEND_IMAGE" .
+          docker tag "$FRONTEND_IMAGE" "$ECR_REGISTRY/$ECR_REPOSITORY:frontend-latest"
           docker push "$FRONTEND_IMAGE"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:frontend-latest"
           echo "image=$FRONTEND_IMAGE" >> "$GITHUB_OUTPUT"
 
       - name: Download current ECS task definition
@@ -142,7 +147,7 @@ jobs:
 
       - name: Smoke check deployment
         env:
-          DEPLOYMENT_URL: ${{ secrets.DEPLOYMENT_URL }}
+          DEPLOYMENT_URL: ${{ env.DEPLOYMENT_URL }}
         run: |
           echo "Checking $DEPLOYMENT_URL..."
           for i in 1 2 3 4 5; do

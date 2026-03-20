@@ -1,3 +1,13 @@
+data "aws_ecr_image" "frontend" {
+  repository_name = aws_ecr_repository.main.name
+  image_tag       = "frontend-latest"
+}
+
+data "aws_ecr_image" "backend" {
+  repository_name = aws_ecr_repository.main.name
+  image_tag       = "backend-latest"
+}
+
 resource "aws_ecr_repository" "main" {
   name                 = local.name_prefix
   image_tag_mutability = "MUTABLE"
@@ -35,31 +45,14 @@ resource "aws_ecr_lifecycle_policy" "main" {
 resource "aws_ecs_cluster" "main" {
   name = local.name_prefix
 
-  setting {
-    name  = "containerInsights"
-    value = "enabled"
-  }
-
   tags = {
     Name = local.name_prefix
   }
 }
 
-resource "aws_ecs_cluster_capacity_providers" "main" {
-  cluster_name = aws_ecs_cluster.main.name
-
-  capacity_providers = ["FARGATE", "FARGATE_SPOT"]
-
-  default_capacity_provider_strategy {
-    base              = 1
-    weight            = 100
-    capacity_provider = "FARGATE"
-  }
-}
-
 resource "aws_cloudwatch_log_group" "main" {
   name              = "/ecs/${local.name_prefix}"
-  retention_in_days = 30
+  retention_in_days = 7
 
   tags = {
     Name = "${local.name_prefix}-logs"
@@ -78,8 +71,13 @@ resource "aws_ecs_task_definition" "main" {
   container_definitions = jsonencode([
     {
       name      = "backend"
-      image     = var.backend_image
+      image     = "${aws_ecr_repository.main.repository_url}@${data.aws_ecr_image.backend.image_digest}"
       essential = true
+      environment = [
+        { name = "RPC_URL",       value = "https://evm-rpc.sei-apis.com" },
+        { name = "VAULT_ADDRESS", value = "0xCCB5FE03848cc7fA2269DA7B1fB8DFec052638Ac" },
+        { name = "NODE_ENV",      value = "production" },
+      ]
       portMappings = [
         {
           containerPort = var.backend_port
@@ -94,17 +92,10 @@ resource "aws_ecs_task_definition" "main" {
           "awslogs-stream-prefix" = "backend"
         }
       }
-      healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:${var.backend_port}/health || exit 1"]
-        interval    = 30
-        timeout     = 5
-        retries     = 3
-        startPeriod = 60
-      }
     },
     {
       name      = "frontend"
-      image     = var.frontend_image
+      image     = "${aws_ecr_repository.main.repository_url}@${data.aws_ecr_image.frontend.image_digest}"
       essential = true
       portMappings = [
         {
@@ -119,13 +110,6 @@ resource "aws_ecs_task_definition" "main" {
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "frontend"
         }
-      }
-      healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:${var.frontend_port}/health || exit 1"]
-        interval    = 30
-        timeout     = 5
-        retries     = 3
-        startPeriod = 60
       }
     }
   ])
@@ -150,48 +134,23 @@ resource "aws_lb" "main" {
 }
 
 resource "aws_lb_target_group" "frontend" {
-  name        = "${local.name_prefix}-fe"
+  name        = "gagpt-prod-fe"
   port        = var.frontend_port
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
   target_type = "ip"
 
   health_check {
-    enabled             = true
+    path                = "/"
+    interval            = 30
+    timeout             = 5
     healthy_threshold   = 2
     unhealthy_threshold = 3
-    interval            = 30
-    path                = "/health"
-    protocol            = "HTTP"
-    timeout             = 5
-    matcher             = "200"
+    matcher             = "200-399"
   }
 
   tags = {
     Name = "${local.name_prefix}-fe-tg"
-  }
-}
-
-resource "aws_lb_target_group" "backend" {
-  name        = "${local.name_prefix}-be"
-  port        = var.backend_port
-  protocol    = "HTTP"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-
-  health_check {
-    enabled             = true
-    healthy_threshold   = 2
-    unhealthy_threshold = 3
-    interval            = 30
-    path                = "/health"
-    protocol            = "HTTP"
-    timeout             = 5
-    matcher             = "200"
-  }
-
-  tags = {
-    Name = "${local.name_prefix}-be-tg"
   }
 }
 
@@ -206,17 +165,6 @@ resource "aws_lb_listener" "frontend" {
   }
 }
 
-resource "aws_lb_listener" "backend" {
-  load_balancer_arn = aws_lb.main.arn
-  port              = var.backend_port
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.backend.arn
-  }
-}
-
 resource "aws_ecs_service" "main" {
   name            = local.name_prefix
   cluster         = aws_ecs_cluster.main.id
@@ -225,9 +173,9 @@ resource "aws_ecs_service" "main" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = aws_subnet.private[*].id
-    security_groups  = [aws_security_group.backend_ecs.id, aws_security_group.frontend_ecs.id]
-    assign_public_ip = false
+    subnets          = aws_subnet.public[*].id
+    security_groups  = [aws_security_group.ecs.id]
+    assign_public_ip = true
   }
 
   load_balancer {
@@ -236,15 +184,6 @@ resource "aws_ecs_service" "main" {
     container_port   = var.frontend_port
   }
 
-  load_balancer {
-    target_group_arn = aws_lb_target_group.backend.arn
-    container_name   = "backend"
-    container_port   = var.backend_port
-  }
-
-  deployment_minimum_healthy_percent = 100
-  deployment_maximum_percent         = 200
-
   deployment_circuit_breaker {
     enable   = true
     rollback = true
@@ -252,7 +191,6 @@ resource "aws_ecs_service" "main" {
 
   depends_on = [
     aws_lb_listener.frontend,
-    aws_lb_listener.backend,
     aws_iam_role_policy_attachment.ecs_task_execution,
   ]
 

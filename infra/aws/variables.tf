@@ -16,15 +16,6 @@ variable "environment" {
   default     = "production"
 }
 
-variable "backend_image" {
-  description = "ECR image URI for the backend container"
-  type        = string
-}
-
-variable "frontend_image" {
-  description = "ECR image URI for the frontend container"
-  type        = string
-}
 
 variable "backend_port" {
   description = "Port the backend container listens on"

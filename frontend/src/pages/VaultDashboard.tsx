@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { formatUnits } from 'viem';
 import { useVaultState } from '../hooks/useVaultState';
 import { StatusBar } from '../components/StatusBar';
